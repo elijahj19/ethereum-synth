@@ -2,6 +2,7 @@
 
 
 /* Auto-generated code for Teensy Sound */
+#pragma region
 #include <Audio.h>
 #include <Wire.h>
 #include <SPI.h>
@@ -38,8 +39,6 @@ AudioMixer4              mixer2;         //xy=545.7500076293945,274.750003814697
 AudioMixer4              mixer3;         //xy=643.7500076293945,203.75000381469727
 AudioAmplifier           amp9;           //xy=656.5000076293945,510.0000057220459
 AudioEffectFreeverb      freeverb1;      //xy=762.5000114440918,428.5000057220459
-AudioFilterStateVariable filter1;        //xy=765.5000114440918,211.25000286102295
-AudioFilterStateVariable filter2;        //xy=875.2500114440918,347.50000381469727
 AudioOutputI2S           i2s1;           //xy=933.0000114440918,203.25000286102295
 AudioConnection          patchCord1(sine8, amp8);
 AudioConnection          patchCord2(sine2, amp2);
@@ -67,13 +66,13 @@ AudioConnection          patchCord23(fade7, 0, mixer2, 2);
 AudioConnection          patchCord24(fade8, 0, mixer2, 3);
 AudioConnection          patchCord25(mixer1, 0, mixer3, 0);
 AudioConnection          patchCord26(mixer2, 0, mixer3, 1);
-AudioConnection          patchCord27(mixer3, 0, filter1, 0);
+AudioConnection          patchCord27(mixer3, amp9);
 AudioConnection          patchCord28(amp9, freeverb1);
-AudioConnection          patchCord29(freeverb1, 0, filter2, 0);
-AudioConnection          patchCord30(filter1, 0, amp9, 0);
-AudioConnection          patchCord31(filter2, 0, i2s1, 0);
-AudioConnection          patchCord32(filter2, 0, i2s1, 1);
+AudioConnection          patchCord29(freeverb1, 0, i2s1, 0);
+AudioConnection          patchCord30(freeverb1, 0, i2s1, 1);
 // GUItool: end automatically generated code
+
+#pragma endregion
 
 AudioControlSGTL5000 codec;
 
@@ -140,7 +139,7 @@ void setup() {
   Serial1.begin(9600); // for receiving values from ESP32
   AudioMemory(24);
   codec.enable();
-  codec.volume(0.55);
+  codec.volume(0.4);
 
   Serial.println("Setting up program");
 
@@ -213,7 +212,7 @@ void setup() {
   amp7.gain(0.6);
   amp8.gain(0.6);
 
-  amp9.gain(0.2);
+  amp9.gain(0.5);
 
   // mixer setups
   mixer1.gain(0, 0.25);
@@ -230,8 +229,8 @@ void setup() {
   mixer3.gain(1, 0.5);
   
   // filter setup
-  // filter1.frequency(700);
-  // filter2.frequency(600);
+  // filter1.frequency(20000);
+  // filter2.frequency(20000);
 
   // freeverb setup
   freeverb1.roomsize(0.9);
@@ -266,29 +265,67 @@ byte getID() {
 
 // get value for data being sent by ESP32
 void updateValue() {
+  Serial.println("************************************");
+  Serial.println("Updating Value");
+
   // read data being sent by ESP32
   byte id = getID();
   int value = Serial1.read();
   
-  Serial.print("ID: ");
-  Serial.println(id);
-  Serial.print("Value: ");
-  Serial.println(value);
-  Serial.println(" ");
+  Serial.printf("ID: %u, Value: %i\n", id, value);
   
-  // actually change values
-  // TODO
+  /*
+    1 = f0
+    2 = noteFadeInTime
+    3 = noteSustainTime
+    4 = noteFadeOutTime
+    5 = chordProgressionStyle
+    6 = chordPlayStyle
+    7 = chordFamily
+  */
+  switch(id) {
+    case 1: {
+      f0 = ((double) value) / ((double) 100.0);
+      break;
+    }
+    case 2: {
+      noteFadeInTime = value;
+      break;
+    }
+    case 3: {
+      noteSustainTime = value;
+      break;
+    }
+    case 4: {
+      noteFadeOutTime = value;
+      break;
+    }
+    case 5: {
+      chordProgressionStyle = value;
+      break;
+    }
+    case 6: {
+      chordPlayStyle = value;
+      break;
+    }
+    case 7: {
+      chordIndex = value;
+      break;
+    }
+  }
+  Serial.println("************************************");
 }
 
 /* Sound Functions */
+#pragma region
 void soundControl() {
   // if the chord is finished, then start a new chord
   if (chordFinished) {
     chordFinished = false;
-    f0 = random(420, 460);
-    chordProgressionStyle = random(1, 6);
-    chordPlayStyle = random(1, 6);
-    chordIndex = random(0, 8);
+    // f0 = random(420, 460);
+    // chordProgressionStyle = random(1, 6);
+    // chordPlayStyle = random(1, 6);
+    // chordIndex = random(0, 8);
 
     Serial.println("--------------------------------------------------");
     Serial.println("Starting a new chord");
@@ -357,7 +394,7 @@ void playChord2(double startFreq) {
 
   double multFactor = startFreq / (chordTunings[chordIndex][0]);
   for (int i = 3; i > 0; i--) {
-    playNote(i, i * noteFadeInTime / 2, chordTunings[chordIndex][i] * multFactor);
+    playNote(i, (3 - i) * noteFadeInTime / 2, chordTunings[chordIndex][i] * multFactor);
   }
   t.setTimeout(resetChord, (5 * noteFadeInTime / 2) + noteSustainTime + noteFadeOutTime);
 }
@@ -424,14 +461,8 @@ void playNote(int sineIndex, int initialDelayTime, double freq) {
   t.setTimeout((*players[sineIndex].fadeOutFunc), initialDelayTime + noteFadeInTime + noteSustainTime);
 }
 
-
-
 void resetChord() {
   chordFinished = true;
-}
-
-void doNothing() {
-  return;
 }
 
 // hacky way to get over the fact that i can't capture lambda function list
@@ -516,3 +547,5 @@ void fadeInPlayer7() {
   Serial.printf("Fading in player 7 for %i seconds\n", noteFadeInTime);
   (*players[7].fade).fadeIn(noteFadeInTime);
 }
+
+#pragma endregion
