@@ -1,3 +1,7 @@
+#include <AsyncTimer.h> // https://github.com/Aasim-A/AsyncTimer
+
+
+/* Auto-generated code for Teensy Sound */
 #include <Audio.h>
 #include <Wire.h>
 #include <SPI.h>
@@ -74,20 +78,57 @@ AudioConnection          patchCord32(filter2, 0, i2s1, 1);
 
 AudioControlSGTL5000 codec;
 
-#define idPinsAmount 4
+AsyncTimer t;
+
+const int idPinsAmount = 4;
 int idPins[] = { 2, 3, 4, 5 };
 
 AudioSynthWaveformSine *sinePointers[8];
+AudioEffectFade *fadePointers[8];
 
 double f0 = 440.0; // A4 = 440hz
-double a = pow(2, 0.08333333333);
-double octaveLength = 12;
+const double a = pow(2, 0.08333333333);
+const double octaveLength = 12;
 // fn = f0 * (a)^(n)
 
-int chordTunings[2][4] = {
-  { 8, 10, 12, 15 }, // Major seventh chord
-  { 10, 12, 15, 18 } // Minor seventh chord
+
+// just intonation ratios for chords. -1 means that there is no extra note
+int chordTunings[8][4] = {
+  { 4, 5, 6, -1 },          // Major Chord
+  { 10, 12, 15, -1 },       // Minor Chord
+  { 6, 8, 9, -1 },          // Sus Fourth Chord
+  { 8, 9, 12, -1 },         // Sus Second Chord
+  { 8, 10, 12, 15 },        // Major seventh chord
+  { 10, 12, 15, 18 },       // Minor seventh chord
+  { 4, 5, 6, 7 },           // Dominant seventh chord
+  { 125, 150, 180, 216 }    // Dimished seventh chord
 };
+
+int chordIndex = 0;
+int chordNoteIndex = 0;
+bool chordFinished = true;
+
+int noteFadeInTime = 2000;
+int noteSustainTime = 100;
+int noteFadeOutTime = 2000;
+
+int stepRange[2] = { -30, 30 }; // basically from C1 to C6
+
+int curNoteStep = 60 - random(30, 60);
+
+// 1 = randomly picked notes to start new chord
+// 2 = next half step (wrap around stepRange) to start new chord
+// 3 = next full step (wrap around stepRange) to start new chord
+// 4 = next note in current chord (wrap around stepRange) to start new chord 
+// 5 = go up an octave (wrap around stepRange) to start new chord
+int chordProgressionStyle = 1;
+
+// 1 = play chord notes from left to right
+// 2 = play chord notes from right to left
+// 3 = play chord notes in random order
+// 4 = oscillate chord notes from left to right and right from left
+int chordPlayStyle = 1;
+void (*playChord[4])(double) = { &playChord1, &playChord2, &playChord3, &playChord3 };
 
 void setup() {
   Serial.begin(115200);
@@ -113,9 +154,20 @@ void setup() {
   sinePointers[6] = &sine7;
   sinePointers[7] = &sine8;
 
+  // fade effect setup
+  fadePointers[0] = &fade1;
+  fadePointers[1] = &fade2;
+  fadePointers[2] = &fade3;
+  fadePointers[3] = &fade4;
+  fadePointers[4] = &fade5;
+  fadePointers[5] = &fade6;
+  fadePointers[6] = &fade7;
+  fadePointers[7] = &fade8;
+
   for (int i = 0; i < 8; i++) {
     (*sinePointers[i]).frequency(0);
     (*sinePointers[i]).amplitude(0.5);
+    (*fadePointers[i]).fadeOut(0);
   }
 
   // amps setup
@@ -154,8 +206,10 @@ void setup() {
 }
 
 void loop() {
+//  Serial.println("don't worry, i'm working!");
   valueControl();
   soundControl();
+  delay(1000);
 }
 
 /* ESP32 Communication Functions */
@@ -193,5 +247,69 @@ void updateValue() {
 
 /* Sound Functions */
 void soundControl() {
-  
+  // if the chord is finished, then start a new chord
+  if (chordFinished) {
+    chordFinished = false;
+
+    // this is a soft range limit i guess, but this accomplishes a soft wraparound for notes
+    if (curNoteStep < stepRange[0] || curNoteStep > stepRange[1]) {
+      curNoteStep = stepRange[0];
+    }
+
+    double startFreq = 0.0;
+    // 4 = next note in current chord (wrap around stepRange) to start new chord 
+    // 5 = go up an octave (wrap around stepRange) to start new chord
+    // 6 = fibonacci sequence (wrap around stepRange) to start new chord
+    switch (chordProgressionStyle) {
+      case 1: // 1 = randomly picked notes to start new chord
+        curNoteStep = random((int) stepRange[0], (int) stepRange[1]);
+        break;
+      case 2: // 2 = next half step (wrap around stepRange) to start new chord
+        curNoteStep += 1;
+        break;
+      case 3: // 3 = next full step (wrap around stepRange) to start new chord
+        curNoteStep += 2;
+        break;
+      case 4: // 4 = next note in current chord (wrap around stepRange) to start new chord
+        double multFactor = getFreq(curNoteStep) / (chordTunings[chordIndex][0]);
+        double nextNoteFreq = chordTunings[chordIndex][1] * multFactor;
+        while (getFreq(curNoteStep) < nextNoteFreq) {
+          curNoteStep++;
+        }
+        break;
+      case 5: // 5 = go up an octave (wrap around stepRange) to start new chord
+        curNoteStep += 12;
+        break;
+      default:
+        Serial.println("This should not happen!!!!!");
+    }
+
+    (*playChord[chordPlayStyle - 1])(getFreq(curNoteStep));
+  }
+}
+
+double getFreq(int halfSteps) {
+  return (f0 * pow(a, halfSteps));
+}
+
+
+
+void playChord1(double startFreq) {
+
+}
+
+void playChord2(double startFreq) {
+
+}
+
+void playChord3(double startFreq) {
+
+}
+
+void playChord4(double startFreq) {
+
+}
+
+void playNote(double freq, float fadeInTime, float fadeOutTime) {
+
 }
