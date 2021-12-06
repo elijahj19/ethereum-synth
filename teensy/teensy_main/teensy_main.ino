@@ -75,7 +75,6 @@ AudioConnection          patchCord31(filter2, 0, i2s1, 0);
 AudioConnection          patchCord32(filter2, 0, i2s1, 1);
 // GUItool: end automatically generated code
 
-
 AudioControlSGTL5000 codec;
 
 AsyncTimer t;
@@ -83,12 +82,16 @@ AsyncTimer t;
 const int idPinsAmount = 4;
 int idPins[] = { 2, 3, 4, 5 };
 
-AudioSynthWaveformSine *sinePointers[8];
-AudioEffectFade *fadePointers[8];
+struct Player {
+  AudioSynthWaveformSine *sine;
+  AudioEffectFade *fade;
+  void (*fadeOutFunc)();
+};
+
+Player players[8];
 
 double f0 = 440.0; // A4 = 440hz
 const double a = pow(2, 0.08333333333);
-const double octaveLength = 12;
 // fn = f0 * (a)^(n)
 
 
@@ -127,8 +130,9 @@ int chordProgressionStyle = 1;
 // 2 = play chord notes from right to left
 // 3 = play chord notes in random order
 // 4 = oscillate chord notes from left to right and right from left
+// 5 = play chord notes all at once
 int chordPlayStyle = 1;
-void (*playChord[4])(double) = { &playChord1, &playChord2, &playChord3, &playChord3 };
+void (*playChord[5])(double) = { &playChord1, &playChord2, &playChord3, &playChord4, &playChord4 };
 
 void setup() {
   Serial.begin(115200);
@@ -136,6 +140,10 @@ void setup() {
   AudioMemory(24);
   codec.enable();
   codec.volume(0.35);
+
+  Serial.println("Setting up program");
+
+  t.setup(); // async timer setup
 
   /* ESP32 Communication Setup */
   // setup id pins, to read ID of value to be changed
@@ -145,29 +153,44 @@ void setup() {
   
   /* Sound Setup */
   // sine wave setup
-  sinePointers[0] = &sine1;
-  sinePointers[1] = &sine2;
-  sinePointers[2] = &sine3;
-  sinePointers[3] = &sine4;
-  sinePointers[4] = &sine5;
-  sinePointers[5] = &sine6;
-  sinePointers[6] = &sine7;
-  sinePointers[7] = &sine8;
+  Serial.print("Sine wave setup...");
+  players[0].sine = &sine1;
+  players[1].sine = &sine2;
+  players[2].sine = &sine3;
+  players[3].sine = &sine4;
+  players[4].sine = &sine5;
+  players[5].sine = &sine6;
+  players[6].sine = &sine7;
+  players[7].sine = &sine8;
+  Serial.println("Success!");
 
   // fade effect setup
-  fadePointers[0] = &fade1;
-  fadePointers[1] = &fade2;
-  fadePointers[2] = &fade3;
-  fadePointers[3] = &fade4;
-  fadePointers[4] = &fade5;
-  fadePointers[5] = &fade6;
-  fadePointers[6] = &fade7;
-  fadePointers[7] = &fade8;
+  Serial.print("Fade Effect setup...");
+  players[0].fade = &fade1;
+  players[1].fade = &fade2;
+  players[2].fade = &fade3;
+  players[3].fade = &fade4;
+  players[4].fade = &fade5;
+  players[5].fade = &fade6;
+  players[6].fade = &fade7;
+  players[7].fade = &fade8;
+  Serial.println("Success!");
+
+  Serial.print("Fade out function setup...");
+  players[0].fadeOutFunc = &fadeOutPlayer0;
+  players[1].fadeOutFunc = &fadeOutPlayer1;
+  players[2].fadeOutFunc = &fadeOutPlayer2;
+  players[3].fadeOutFunc = &fadeOutPlayer3;
+  players[4].fadeOutFunc = &fadeOutPlayer4;
+  players[5].fadeOutFunc = &fadeOutPlayer5;
+  players[6].fadeOutFunc = &fadeOutPlayer6;
+  players[7].fadeOutFunc = &fadeOutPlayer7;
+  Serial.println("Success!");
 
   for (int i = 0; i < 8; i++) {
-    (*sinePointers[i]).frequency(0);
-    (*sinePointers[i]).amplitude(0.5);
-    (*fadePointers[i]).fadeOut(0);
+    (*players[i].sine).frequency(0);
+    (*players[0].sine).amplitude(0.5);
+    (*players[0].fade).fadeOut(20);
   }
 
   // amps setup
@@ -206,10 +229,9 @@ void setup() {
 }
 
 void loop() {
-//  Serial.println("don't worry, i'm working!");
+  t.handle();
   valueControl();
   soundControl();
-  delay(1000);
 }
 
 /* ESP32 Communication Functions */
@@ -251,39 +273,45 @@ void soundControl() {
   if (chordFinished) {
     chordFinished = false;
 
+    Serial.println("--------------------------------------------------");
+    Serial.println("Starting a new chord");
+
     // this is a soft range limit i guess, but this accomplishes a soft wraparound for notes
     if (curNoteStep < stepRange[0] || curNoteStep > stepRange[1]) {
       curNoteStep = stepRange[0];
     }
 
-    double startFreq = 0.0;
-    // 4 = next note in current chord (wrap around stepRange) to start new chord 
-    // 5 = go up an octave (wrap around stepRange) to start new chord
-    // 6 = fibonacci sequence (wrap around stepRange) to start new chord
     switch (chordProgressionStyle) {
-      case 1: // 1 = randomly picked notes to start new chord
+      case 1: { // 1 = randomly picked notes to start new chord
         curNoteStep = random((int) stepRange[0], (int) stepRange[1]);
         break;
-      case 2: // 2 = next half step (wrap around stepRange) to start new chord
+      }
+      case 2: { // 2 = next half step (wrap around stepRange) to start new chord
         curNoteStep += 1;
         break;
-      case 3: // 3 = next full step (wrap around stepRange) to start new chord
+      }
+      case 3: { // 3 = next full step (wrap around stepRange) to start new chord
         curNoteStep += 2;
         break;
-      case 4: // 4 = next note in current chord (wrap around stepRange) to start new chord
+      }
+      case 4: { // 4 = next note in current chord (wrap around stepRange) to start new chord
         double multFactor = getFreq(curNoteStep) / (chordTunings[chordIndex][0]);
         double nextNoteFreq = chordTunings[chordIndex][1] * multFactor;
         while (getFreq(curNoteStep) < nextNoteFreq) {
           curNoteStep++;
         }
         break;
-      case 5: // 5 = go up an octave (wrap around stepRange) to start new chord
+      }
+      case 5: { // 5 = go up an octave (wrap around stepRange) to start new chord
         curNoteStep += 12;
         break;
-      default:
+      }
+      default: {
         Serial.println("This should not happen!!!!!");
+      }
     }
-
+    Serial.printf("Chord should be this many halfsteps from f0: %i \n", curNoteStep);
+    // Serial.println(curNoteStep);
     (*playChord[chordPlayStyle - 1])(getFreq(curNoteStep));
   }
 }
@@ -292,24 +320,104 @@ double getFreq(int halfSteps) {
   return (f0 * pow(a, halfSteps));
 }
 
-
-
+// 1 = play chord notes from left to right
 void playChord1(double startFreq) {
+  Serial.printf("Playing chord from left to right, starting on frequency %f\n", startFreq);
+
 
 }
 
+// 2 = play chord notes from right to left
 void playChord2(double startFreq) {
+  Serial.printf("Playing chord notes from right to left, leftmost frequency is %f\n", startFreq);
+
 
 }
 
+// 3 = play chord notes in random order
 void playChord3(double startFreq) {
+  Serial.printf("Playing chord notes in random order, leftmost frequency is %f\n", startFreq);
+
 
 }
 
+// 4 = oscillate chord notes from left to right and right from left
 void playChord4(double startFreq) {
+  Serial.printf("Playing chord notes in oscillating fashion, leftmost frequency is %f\n", startFreq);
+
 
 }
 
-void playNote(double freq, float fadeInTime, float fadeOutTime) {
+// 5 = play chord notes all at once
+void playChord5(double startFreq) {
+  Serial.printf("Playing chord notes all at once, leftmost frequency is %f\n", startFreq);
 
+  double multFactor = startFreq / (chordTunings[chordIndex][0]);
+  for (int i = 0; i < 4; i++) {
+    playNote(i, chordTunings[chordIndex][i] * multFactor, ((i == 4) ? &resetChord : &doNothing));
+  }
+}
+
+void playNote(int sineIndex, double freq, void (*callback)()) {
+  // perform callback, (such as resetChord)
+  t.setTimeout(*callback, noteFadeInTime + noteSustainTime + noteFadeOutTime);
+
+  // negative frequency means it's not supposed to be played
+  if (freq <= 0.0) {
+    return;
+  }
+
+  Serial.printf("Playing freq %f on sinewave %i for ms with additional fades %i ms and %i ms \n", freq, sineIndex, noteSustainTime, noteFadeInTime, noteFadeOutTime);
+  
+  // set sinewave frequency
+  (*players[sineIndex].sine).frequency(freq);
+
+  // fade in sinewave
+  (*players[sineIndex].fade).fadeIn(noteFadeInTime);
+
+  // fade out sinewave
+  t.setTimeout((*players[sineIndex].fadeOutFunc), noteFadeInTime + noteSustainTime);
+}
+
+
+
+void resetChord() {
+  chordFinished = true;
+}
+
+void doNothing() {
+  // nothing here :)
+}
+
+// hacky way to get over the fact that i can't capture lambda function list
+void fadeOutPlayer0() {
+  (*players[0].fade).fadeOut(noteFadeOutTime);
+}
+
+void fadeOutPlayer1() {
+  (*players[1].fade).fadeOut(noteFadeOutTime);
+}
+
+void fadeOutPlayer2() {
+  (*players[2].fade).fadeOut(noteFadeOutTime);
+}
+
+void fadeOutPlayer3() {
+  (*players[3].fade).fadeOut(noteFadeOutTime);
+}
+
+void fadeOutPlayer4() {
+  (*players[4].fade).fadeOut(noteFadeOutTime);
+}
+
+void fadeOutPlayer5() {
+  (*players[5].fade).fadeOut(noteFadeOutTime);
+}
+
+void fadeOutPlayer6() {
+  (*players[6].fade).fadeOut(noteFadeOutTime);
+}
+
+void fadeOutPlayer7() {
+  (*players[7].fade).fadeOut(noteFadeOutTime);
 }
