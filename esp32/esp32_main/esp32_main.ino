@@ -63,20 +63,11 @@ void loop() {
   // put your main code here, to run repeatedly:
   if (WiFi.status() == WL_CONNECTED) {
     getAllContractValues();
-  }
-  delay(5000);
-
-
-
-    // try to reconnect if disconnected
-//    if (WiFi.status() != WL_CONNECTED) {
-//      Serial.println("Wifi disconnected, attempting to reconnect...");
-//      connect();
-//    }
-
-//    int a = getContractValue("https://api-ropsten.etherscan.io/api?module=proxy&action=eth_call&to=0x0C3F3f79cf954eE84CA55488479A76cfC910a3e2&data=0xd46300fd&apikey=M2N2X5CFGFMQSBSWGXIAA5ID4XD6136H38");
-
-//    delay(15000); // delay 2 seconds
+  } else {
+    Serial.println("Wifi disconnected, attempting to reconnect...");
+    connect();
+   }
+  delay(2000);
 }
 
 // connect to wifi network defined in MyWifiConfig.h
@@ -137,12 +128,13 @@ int getContractValue(String url) {
     return -1;
   }
 
+  // get the value from the string payload using JSON and stuff
   deserializeJson(doc, http.getStream());
   String valString = doc["result"].as<String>();
   char buffer2[valString.length()+1];
   valString.toCharArray(buffer2, valString.length()+1);
   char *ptr;
-  int value = strtol(buffer2, &ptr, 16);
+  int value = strtol(buffer2, &ptr, 16); // convert the hex string to int
   Serial.printf("Raw Received Value: %s\n", buffer2);
   Serial.printf("Converted Received Value: %i\n", value);
 
