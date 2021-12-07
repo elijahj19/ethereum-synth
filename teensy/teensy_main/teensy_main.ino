@@ -115,9 +115,9 @@ int noteFadeInTime = 3000;
 int noteSustainTime = 2500;
 int noteFadeOutTime = 2000;
 
-int stepRange[2] = { -30, 15 }; // basically from C1 to C6
+int stepRange[2] = { -40, 5 }; // basically from C1 to C6
 
-int curNoteStep = 15 - random(0, 45);
+int curNoteStep = 5 - random(0, 45);
 
 // 1 = randomly picked notes to start new chord
 // 2 = next half step (wrap around stepRange) to start new chord
@@ -236,7 +236,7 @@ void setup() {
   freeverb1.roomsize(0.9);
   freeverb1.damping(0.7);
 
-  curNoteStep = 15 - random(0, 45);
+  curNoteStep = 5 - random(0, 45);
   delay(100);
 }
 
@@ -286,6 +286,7 @@ void updateValue() {
   switch(id) {
     case 1: {
       f0 = ((double) value) / ((double) 100.0);
+      Serial.printf("f0 = %f\n", f0);
       break;
     }
     case 2: {
@@ -322,10 +323,6 @@ void soundControl() {
   // if the chord is finished, then start a new chord
   if (chordFinished) {
     chordFinished = false;
-    // f0 = random(420, 460);
-    // chordProgressionStyle = random(1, 6);
-    // chordPlayStyle = random(1, 6);
-    // chordIndex = random(0, 8);
 
     Serial.println("--------------------------------------------------");
     Serial.println("Starting a new chord");
@@ -340,7 +337,7 @@ void soundControl() {
 
     switch (chordProgressionStyle) {
       case 1: { // 1 = randomly picked notes to start new chord
-        curNoteStep = 15 - random(0, 45);
+        curNoteStep = 5 - random(0, 45);
         break;
       }
       case 2: { // 2 = next half step (wrap around stepRange) to start new chord
@@ -374,7 +371,7 @@ void soundControl() {
 }
 
 double getFreq(int halfSteps) {
-  return (f0 * pow(a, halfSteps));
+  return (f0 * ((double) pow(a, halfSteps)));
 }
 
 // 1 = play chord notes from left to right
