@@ -16,16 +16,44 @@ int idPins[] = { 27, 14, 12, 13 };
 #define RX2 16 // available pin for reading serial data
 #define TX2 17 // available pin for writing/transmitting serial data
 
+/*
+    1 = f0
+    2 = noteFadeInTime
+    3 = noteSustainTime
+    4 = noteFadeOutTime
+    5 = chordProgressionStyle
+    6 = chordPlayStyle
+    7 = chordFamily
+  */
+String CONTRACT_HASH = "0x6809D2ebA524656C9ABB41B5f62Ce46e814123F3";
+String paramURLs[7] = {
+  "https://api-ropsten.etherscan.io/api?module=proxy&action=eth_call&to=CONTRACT_HASH&data=0xd6d7d066&tag=latest&apikey=MY_API_KEY", // 1 = f0
+  "https://api-ropsten.etherscan.io/api?module=proxy&action=eth_call&to=CONTRACT_HASH&data=0x9bdb6c38&tag=latest&apikey=MY_API_KEY", // 2 = noteFadeInTime
+  "https://api-ropsten.etherscan.io/api?module=proxy&action=eth_call&to=CONTRACT_HASH&data=0x7e43b581&tag=latest&apikey=MY_API_KEY", // 3 = noteSustainTime
+  "https://api-ropsten.etherscan.io/api?module=proxy&action=eth_call&to=CONTRACT_HASH&data=0x0eb64081&tag=latest&apikey=MY_API_KEY", // 4 = noteFadeOutTime
+  "https://api-ropsten.etherscan.io/api?module=proxy&action=eth_call&to=CONTRACT_HASH&data=0x2a13ccf6&tag=latest&apikey=MY_API_KEY", // 5 = chordProgressionStyle
+  "https://api-ropsten.etherscan.io/api?module=proxy&action=eth_call&to=CONTRACT_HASH&data=0xdfd1b7d7&tag=latest&apikey=MY_API_KEY", // 6 = chordPlayStyle
+  "https://api-ropsten.etherscan.io/api?module=proxy&action=eth_call&to=CONTRACT_HASH&data=0xfc95ebad&tag=latest&apikey=MY_API_KEY" // 7 = chordFamily
+};
+int idValues[7] = { -1, -1, -1, -1, -1, -1, -1 }; // will hold previous values to check for change
+
+DynamicJsonDocument doc(2048);
+
 void setup() {
   // setup Serial
   Serial.begin(115200); // Serial.begin value for my ESP32
   Serial2.begin(9600, SERIAL_8N1, RX2, TX2); // used for writing data to Teensy
   
   // connect to WiFi
-  //connect();
+  connect();
 
   for (int i = 0; i < idPinsAmount; i++) {
     pinMode(idPins[i], OUTPUT);
+  }
+
+  for (int i = 0; i < 7; i++) {
+    paramURLs[i].replace("CONTRACT_HASH", CONTRACT_HASH);
+    paramURLs[i].replace("MY_API_KEY", apiKey);
   }
 
   live = true;
@@ -33,45 +61,13 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  while (live) {
-    transmitData(2, 1000);
-    delay(500);
-    transmitData(7, 5);
-    delay(12000);
-    transmitData(3, 1000);
-    delay(500);
-    transmitData(6, 4);
-    delay(8000);
-    transmitData(4, 1000);
-    delay(500);
-    transmitData(5, random(1, 6));
-    delay(8000);
-    transmitData(1, random(40000, 45000));
-    delay(500);
-    transmitData(6, 3);
-    delay(8000);
-    transmitData(5, 2);
-    delay(10000);
-    transmitData(6, random(1, 6));
-    delay(500);
-    transmitData(5, 4);
-    delay(10000);
-    transmitData(7, random(0, 8));
-    delay(500);
-//    for (int i = 0; i < 16; i++) {
-//      transmitData(i, i+100);
-//      delay(3000);
-//    }
-    // try to reconnect if disconnected
-//    if (WiFi.status() != WL_CONNECTED) {
-//      Serial.println("Wifi disconnected, attempting to reconnect...");
-//      connect();
-//    }
-
-//    int a = getContractValue("https://api-ropsten.etherscan.io/api?module=proxy&action=eth_call&to=0x0C3F3f79cf954eE84CA55488479A76cfC910a3e2&data=0xd46300fd&apikey=M2N2X5CFGFMQSBSWGXIAA5ID4XD6136H38");
-
-//    delay(15000); // delay 2 seconds
-  }
+  if (WiFi.status() == WL_CONNECTED) {
+    getAllContractValues();
+  } else {
+    Serial.println("Wifi disconnected, attempting to reconnect...");
+    connect();
+   }
+  delay(2000);
 }
 
 // connect to wifi network defined in MyWifiConfig.h
@@ -91,21 +87,60 @@ void connect() {
   Serial.println(SSID);
 }
 
+/*
+    1 = f0
+    2 = noteFadeInTime
+    3 = noteSustainTime
+    4 = noteFadeOutTime
+    5 = chordProgressionStyle
+    6 = chordPlayStyle
+    7 = chordFamily
+  */
+void getAllContractValues() {
+  for (int i = 0; i < 7; i++) {
+    // get value from web
+    Serial.printf("Retrieving value for ID %i\n", i);
+    int value = getContractValue(paramURLs[i]);
+    delay(1500);
+    if (value == -1) continue; // skip if invalid value
+
+    // send value to Teensy if there is a difference
+    if (value != idValues[i]) {
+      Serial.printf("Prev value for ID %i was %i, new value is %i, send change to Teensy\n", i, idValues[i], value);
+      idValues[i] = value;
+      transmitData(i, value);
+    }
+
+    delay(500);
+  }
+}
+
 int getContractValue(String url) {
+  char buffer[200];
+  url.toCharArray(buffer, 200);
+  Serial.printf("Getting value from url %s\n", buffer);
   http.begin(url);
 
   int httpCode = http.GET();
 
-  if (httpCode == 200) {
-    String payload = http.getString();
-    Serial.println(httpCode);
-    Serial.println(payload);
-  } else {
+  if (httpCode != 200) {
     Serial.println("Error connecting to " + url);
+    return -1;
   }
 
+  // get the value from the string payload using JSON and stuff
+  deserializeJson(doc, http.getStream());
+  String valString = doc["result"].as<String>();
+  char buffer2[valString.length()+1];
+  valString.toCharArray(buffer2, valString.length()+1);
+  char *ptr;
+  int value = strtol(buffer2, &ptr, 16); // convert the hex string to int
+  Serial.printf("Raw Received Value: %s\n", buffer2);
+  Serial.printf("Converted Received Value: %i\n", value);
+
+
   http.end();
-  return httpCode;
+  return value;
 }
 
 // this function will send data to Teensy
