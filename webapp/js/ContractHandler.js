@@ -1,7 +1,7 @@
 class ContractHandler {
   constructor() {
     this.isConnected = false;
-    this.address = '0xc82f07b958Fd66f82eCa7e7691db0D0a176B2A15';
+    this.address = '0xD858DE24B61A0E9266D738940487d92991b72219';
 
     this.account = null;
     this.web3 = new Web3(Web3.givenProvider || "ws://localhost:8545");

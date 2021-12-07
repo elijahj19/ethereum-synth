@@ -48,6 +48,7 @@ class UI {
     for (let key in userValues) {
       userValues[key] = document.getElementById(`input_${key}`).value;
     }
+    userValues['f0'] = userValues['f0'] * 100;
     console.log(userValues);
 
     return userValues;

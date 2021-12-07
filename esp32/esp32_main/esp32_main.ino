@@ -25,7 +25,7 @@ int idPins[] = { 27, 14, 12, 13 };
     6 = chordPlayStyle
     7 = chordFamily
   */
-String CONTRACT_HASH = "0xc82f07b958Fd66f82eCa7e7691db0D0a176B2A15";
+String CONTRACT_HASH = "0xD858DE24B61A0E9266D738940487d92991b72219";
 String paramURLs[7] = {
   "https://api-ropsten.etherscan.io/api?module=proxy&action=eth_call&to=CONTRACT_HASH&data=0xd6d7d066&tag=latest&apikey=MY_API_KEY", // 1 = f0
   "https://api-ropsten.etherscan.io/api?module=proxy&action=eth_call&to=CONTRACT_HASH&data=0x9bdb6c38&tag=latest&apikey=MY_API_KEY", // 2 = noteFadeInTime
