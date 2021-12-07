@@ -34,10 +34,34 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   while (live) {
-    for (int i = 0; i < 16; i++) {
-      transmitData(i, i+100);
-      delay(3000);
-    }
+    transmitData(2, 1000);
+    delay(500);
+    transmitData(7, 5);
+    delay(12000);
+    transmitData(3, 1000);
+    delay(500);
+    transmitData(6, 4);
+    delay(8000);
+    transmitData(4, 1000);
+    delay(500);
+    transmitData(5, random(1, 6));
+    delay(8000);
+    transmitData(1, random(40000, 45000));
+    delay(500);
+    transmitData(6, 3);
+    delay(8000);
+    transmitData(5, 2);
+    delay(10000);
+    transmitData(6, random(1, 6));
+    delay(500);
+    transmitData(5, 4);
+    delay(10000);
+    transmitData(7, random(0, 8));
+    delay(500);
+//    for (int i = 0; i < 16; i++) {
+//      transmitData(i, i+100);
+//      delay(3000);
+//    }
     // try to reconnect if disconnected
 //    if (WiFi.status() != WL_CONNECTED) {
 //      Serial.println("Wifi disconnected, attempting to reconnect...");
@@ -98,6 +122,9 @@ void transmitData(int id, int value) {
   }
   
   // send actual value via serial port to Teensy
-  Serial2.write(value);
+  Serial2.write(value & 0xFF);
+  Serial2.write((value >> 8) & 0xFF);
+  Serial2.write((value >> 16) & 0xFF);
+  Serial2.write((value >> 24) & 0xFF);
   Serial.println("-------------------------");
 }
