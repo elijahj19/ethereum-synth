@@ -115,9 +115,9 @@ int noteFadeInTime = 3000;
 int noteSustainTime = 2500;
 int noteFadeOutTime = 2000;
 
-int stepRange[2] = { -40, 5 }; // basically from C1 to C6
+int stepRange[2] = { -30, 5 }; // basically from C1 to C6
 
-int curNoteStep = 5 - random(0, 45);
+int curNoteStep = 5 - random(0, 35);
 
 // 1 = randomly picked notes to start new chord
 // 2 = next half step (wrap around stepRange) to start new chord
@@ -139,7 +139,7 @@ void setup() {
   Serial1.begin(9600); // for receiving values from ESP32
   AudioMemory(24);
   codec.enable();
-  codec.volume(0.4);
+  codec.volume(0.7);
 
   Serial.println("Setting up program");
 
@@ -236,7 +236,7 @@ void setup() {
   freeverb1.roomsize(0.9);
   freeverb1.damping(0.7);
 
-  curNoteStep = 5 - random(0, 45);
+  curNoteStep = 5 - random(0, 35);
   delay(100);
 }
 
@@ -284,32 +284,32 @@ void updateValue() {
     7 = chordFamily
   */
   switch(id) {
-    case 1: {
+    case 0: {
       f0 = ((double) value) / ((double) 100.0);
       Serial.printf("f0 = %f\n", f0);
       break;
     }
-    case 2: {
+    case 1: {
       noteFadeInTime = value;
       break;
     }
-    case 3: {
+    case 2: {
       noteSustainTime = value;
       break;
     }
-    case 4: {
+    case 3: {
       noteFadeOutTime = value;
       break;
     }
-    case 5: {
+    case 4: {
       chordProgressionStyle = value;
       break;
     }
-    case 6: {
+    case 5: {
       chordPlayStyle = value;
       break;
     }
-    case 7: {
+    case 6: {
       chordIndex = value;
       break;
     }
@@ -337,7 +337,7 @@ void soundControl() {
 
     switch (chordProgressionStyle) {
       case 1: { // 1 = randomly picked notes to start new chord
-        curNoteStep = 5 - random(0, 45);
+        curNoteStep = 5 - random(0, 35);
         break;
       }
       case 2: { // 2 = next half step (wrap around stepRange) to start new chord
