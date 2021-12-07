@@ -115,9 +115,9 @@ int noteFadeInTime = 3000;
 int noteSustainTime = 2500;
 int noteFadeOutTime = 2000;
 
-int stepRange[2] = { -20, 20 }; // basically from C1 to C6
+int stepRange[2] = { -30, 15 }; // basically from C1 to C6
 
-int curNoteStep = 20 - random(0, 40);
+int curNoteStep = 15 - random(0, 45);
 
 // 1 = randomly picked notes to start new chord
 // 2 = next half step (wrap around stepRange) to start new chord
@@ -131,7 +131,7 @@ int chordProgressionStyle = 1;
 // 3 = play chord notes in random order
 // 4 = oscillate chord notes from left to right and right from left
 // 5 = play chord notes all at once
-int chordPlayStyle = 1;
+int chordPlayStyle = 5;
 void (*playChord[5])(double) = { &playChord1, &playChord2, &playChord3, &playChord4, &playChord5 };
 
 void setup() {
@@ -236,7 +236,7 @@ void setup() {
   freeverb1.roomsize(0.9);
   freeverb1.damping(0.7);
 
-  curNoteStep = 20 - random(0, 40);
+  curNoteStep = 15 - random(0, 45);
   delay(100);
 }
 
@@ -248,7 +248,7 @@ void loop() {
 
 /* ESP32 Communication Functions */
 void valueControl() {
-  if (Serial1.available() > 0) {
+  if (Serial1.available() > 3) {
     updateValue();
   }
 }
@@ -270,7 +270,7 @@ void updateValue() {
 
   // read data being sent by ESP32
   byte id = getID();
-  int value = Serial1.read();
+  int value = Serial1.read() | (Serial1.read() << 8) | (Serial1.read() << 16) | (Serial1.read() << 24);
   
   Serial.printf("ID: %u, Value: %i\n", id, value);
   
@@ -340,7 +340,7 @@ void soundControl() {
 
     switch (chordProgressionStyle) {
       case 1: { // 1 = randomly picked notes to start new chord
-        curNoteStep = 20 - random(0, 40);
+        curNoteStep = 15 - random(0, 45);
         break;
       }
       case 2: { // 2 = next half step (wrap around stepRange) to start new chord
