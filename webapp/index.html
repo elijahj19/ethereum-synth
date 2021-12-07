@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Ethereum Synth</title>
+
+  <!-- Google Fonts -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
+
+  <!-- CSS Reset -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css">
+
+  <!-- Milligram CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
+
+  <link rel="stylesheet" href="css/main.css">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.6.1/web3.min.js"
+    integrity="sha512-5erpERW8MxcHDF7Xea9eBQPiRtxbse70pFcaHJuOhdEBQeAxGQjUwgJbuBDWve+xP/u5IoJbKjyJk50qCnMD7A=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- <script src='https://unpkg.com/trianglify@^4/dist/trianglify.bundle.js'></script> -->
+</head>
+
+<body>
+  <div class="container">
+    <div class="row">
+      <div class="column">
+        <span><span class="title">EthSynth</span> <span>by Elijah Jasso</span></span>
+      </div>
+      <div class="column">
+        <div class="float-right">
+          <div id="connected_addresses" class="hidden">
+            <div>
+              <strong>Account:</strong> <span id="connected_account">Not Connected</span>
+            </div>
+            <div>
+              <strong>Contract:</strong> <span id="connected_contract">Not Connected</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="column">
+        <p>
+          This is my MUSC-075 Final Project.This web app communicates with an Ethereum smart contract to change certain parameters on a Teensy 3.2 that algorithmically produces sounds.
+        </p>
+        <p id="connect-instructions">Ensure you have the Metamask extension on Chrome installed. Click the "Connect to Contract" button to start.</p>
+        <button id="connect_button" onclick="app.connectMetamask()">Connect to Contract</button>
+        <p id="usage-instructions" class="hidden">Change the parameters as you want. When you are done, press "Submit Changes". If you want to see what parameters are currently being used click "Reset".</p>
+      </div>
+      <!-- <div class="column">
+        <h5>How to Use</h5>
+        <ol>
+          <li>Setup the <a href="https://metamask.io/">Metamask extension</a> in your browser</li>
+          <li>Click the "Connect to Contract" button in the upper right hand corner</li>
+          <li>Adjust the parameters that show up</li>
+          <li>Submit to send the parameter changes to the smart contract and Teensy</li>
+        </ol>
+      </div> -->
+    </div>
+    <hr>
+    <div id="hide_before_connect" class="hidden">
+      <div class="row">
+        <div class="column">
+          <a class="button" href="#" onclick="app.submit()">Submit Changes</a>
+        </div>
+        <div class="column">
+          <div class="float-right">
+            <a class="button button-outline" onclick="app.reset()">Reset</a>
+          </div>
+        </div>
+      </div>
+      <hr>
+      <div class="row">
+        <div class="column">
+          <fieldset>
+            <label for="input_noteFadeInTime">Fade In Time (ms)</label>
+            <input onchange="app.changeSlider(this.value, this.id)" type="range" id="input_noteFadeInTime" min="1"
+              max="10000" value="3000" oninput="this.nextElementSibling.value = this.value">
+            <output id="output_noteFadeInTime">3000</output>
+          </fieldset>
+        </div>
+        <div class="column">
+          <fieldset>
+            <label for="input_noteSustainTime">Sustain Time (ms)</label>
+            <input onchange="app.changeSlider(this.value, this.id)" type="range" id="input_noteSustainTime" min="1"
+              max="10000" value="1000" oninput="this.nextElementSibling.value = this.value">
+            <output id="output_noteSustainTime">1000</output>
+          </fieldset>
+        </div>
+        <div class="column">
+          <fieldset>
+            <label for="input_noteFadeOutTime">Fade Out Time (ms)</label>
+            <input type="range" id="input_noteFadeOutTime" min="1" max="10000" value="2000"
+              oninput="this.nextElementSibling.value = this.value">
+            <output id="output_noteFadeOutTime">440</output>
+          </fieldset>
+        </div>
+        <div class="column">
+          <fieldset>
+            <label for="input_f0">Tuning Frequency (hz)</label>
+            <input type="range" id="input_f0" min="400" max="500" value="440"
+              oninput="this.nextElementSibling.value = this.value">
+            <output id="output_f0">440</output>
+          </fieldset>
+        </div>
+      </div>
+      <div class="row">
+        <div class="column">
+          <fieldset>
+            <label for="input_chordProgressionStyle">Chord Progression Style</label>
+            <select id="input_chordProgressionStyle">
+              <option value="1" selected>1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </fieldset>
+        </div>
+        <div class="column">
+          <fieldset>
+            <label for="input_chordPlayStyle">Chord Play Style</label>
+            <select id="input_chordPlayStyle">
+              <option value="1" selected>1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </fieldset>
+        </div>
+        <div class="column">
+          <fieldset>
+            <label for="input_chordFamily">Chord Family</label>
+            <select id="input_chordFamily">
+              <option value="1" selected>0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+            </select>
+          </fieldset>
+        </div>
+        <div class="column">
+
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+  <script src="js/ContractHandler.js"></script>
+  <script src="js/UI.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>
