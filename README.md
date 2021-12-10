@@ -1,8 +1,14 @@
 # EthSynth
-## Videos
+## Important Links/Videos
+### Videos
 - [Setting up MetaMask](https://youtu.be/Jh3NbtJKF90)
 - [Project Demo with Smart Contract](https://youtu.be/kTzi-2DIkKU)
 - [Project Demo Song](https://youtu.be/KxMXWseGHQk)
+
+### Other Links
+
+ - [Web app](https://elijahj19.github.io/ethereum-synth/) for user interactions with smart contract
+
 ## Overview
 ### Artistic Intention
 The inspiration for this project is to make a public decentralized collaborative instrument that can be interacted with from anywhere in the world via the use of Ethereum smart contracts (application hosted on the Ethereum blockchain). People will interact with a smart contract which will cause changes in the instrument’s music production. Ethereum smart contract interactions can take up to a few minutes to “confirm” so the instrument produces music continuously and smart contract interactions, once confirmed, will change certain parameters of the music being produced. Multiple people can be using the instrument at the same time.
